@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CP-Prediction History</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@550;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #09090b;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
+      font-family: 'Outfit', sans-serif;
+    }
+    .glass {
+      background: rgba(15, 15, 22, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(212, 175, 55, 0.12);
+    }
+    .gold-text {
+      background: linear-gradient(135deg, #f6e0a4 0%, #d4af37 50%, #aa7c11 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-zinc-100 pb-12">
+
+  <!-- NAVIGATION HEADER -->
+  <header class="sticky top-0 z-40 w-full glass border-b border-yellow-500/10 px-4 md:px-8 py-3.5 mb-8">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="font-display font-black text-lg gold-text leading-none uppercase">CP-GOLD</span>
+        <span class="hidden sm:inline text-[9px] font-mono text-zinc-500 bg-zinc-950 px-2.5 py-1 rounded-full border border-zinc-800 uppercase">Live Host</span>
+      </div>
+
+      <div class="flex items-center gap-4 text-xs font-semibold">
+        <a href="dashboard.html" class="text-zinc-400 hover:text-zinc-200">Dashboard</a>
+        <a href="wallet.html" class="text-zinc-400 hover:text-zinc-200">Wallet</a>
+        <a href="history.html" class="text-yellow-500 underline decoration-2">History</a>
+        <a href="admin.html" id="admin-link" class="hidden text-zinc-400 hover:text-rose-400 font-bold">Admin</a>
+        <button id="logout-btn" class="p-2 rounded bg-zinc-900 border border-zinc-800 hover:border-yellow-500/20 text-zinc-400 hover:text-yellow-500 text-[10px] uppercase font-mono tracking-wider font-extrabold cursor-pointer">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4">
+    
+    <div class="glass rounded-2xl p-6 min-h-[350px]">
+      <h3 class="text-base font-bold font-display uppercase tracking-wider text-zinc-300 mb-6">Personal Predictions ledger</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left filter-table">
+          <thead>
+            <tr class="border-b border-zinc-900 text-[10px] font-mono uppercase tracking-wider text-zinc-500 pb-3">
+              <th class="pb-3 pl-2">Round ID</th>
+              <th class="pb-3 text-center">Prediction Color</th>
+              <th class="pb-3 text-right">Wager size</th>
+              <th class="pb-3 text-center">Settle Status</th>
+              <th class="pb-3 text-right pr-2">Outcome Rewards</th>
+            </tr>
+          </thead>
+          <tbody id="personal-bets-ledger" class="divide-y divide-zinc-900/50 text-xs">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module">
+    import { checkAuthState, logout } from "./js/auth.js";
+    import { subscribePersonalWagers } from "./js/history.js";
+
+    const adminLink = document.getElementById("admin-link");
+
+    checkAuthState(
+      (profile) => {
+        if (profile.isAdmin) adminLink.classList.remove("hidden");
+        
+        // Listen history data
+        subscribePersonalWagers(profile.uid, (data) => {
+          const ledger = document.getElementById("personal-bets-ledger");
+          ledger.innerHTML = "";
+          if (data.length === 0) {
+            ledger.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-zinc-550 font-mono">No prior prediction placements located.</td></tr>`;
+            return;
+          }
+          data.forEach(bet => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td class="py-4 pl-2 font-mono font-bold">${bet.roundId}</td>
+              <td class="py-4 text-center">
+                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-950 font-mono text-[9px] uppercase font-extrabold text-${bet.color === 'green' ? 'emerald-400' : bet.color === 'red' ? 'rose-405' : 'violet-400'}">
+                  <span class="w-1.5 h-1.5 rounded-full bg-${bet.color === 'green' ? 'emerald-500' : bet.color === 'red' ? 'rose-500' : 'violet-500'}"></span>
+                  ${bet.color}
+                </span>
+              </td>
+              <td class="py-4 text-right font-mono font-bold">${bet.amount.toLocaleString()} Coins</td>
+              <td class="py-4 text-center">
+                <span class="inline-flex px-2 py-0.5 rounded-full border text-[9px] uppercase font-extrabold tracking-wide ${
+                  bet.resultStatus === 'won' ? 'bg-emerald-950/20 border-emerald-500/20 text-emerald-400' :
+                  bet.resultStatus === 'lost' ? 'bg-rose-950/20 border-rose-500/20 text-rose-400' :
+                  'bg-zinc-950 border-zinc-800 text-zinc-400'
+                }">${bet.resultStatus}</span>
+              </td>
+              <td class="py-4 text-right pr-2 font-mono font-bold ${bet.resultStatus === 'won' ? 'text-emerald-400' : 'text-zinc-550'}">
+                ${bet.resultStatus === 'won' ? '+' + bet.winAmount.toLocaleString() : '0 Coins'}
+              </td>
+            `;
+            ledger.appendChild(tr);
+          });
+        });
+      },
+      () => {
+        window.location.href = "login.html";
+      }
+    );
+
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await logout();
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html>

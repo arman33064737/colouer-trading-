@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CP-Prediction Administrator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@550;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #09090b;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
+      font-family: 'Outfit', sans-serif;
+    }
+    .glass {
+      background: rgba(15, 15, 22, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(212, 175, 55, 0.12);
+    }
+    .gold-text {
+      background: linear-gradient(135deg, #f6e0a4 0%, #d4af37 50%, #aa7c11 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-zinc-100 pb-12">
+
+  <!-- NAVIGATION HEADER -->
+  <header class="sticky top-0 z-40 w-full glass border-b border-yellow-500/10 px-4 md:px-8 py-3.5 mb-8">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="font-display font-black text-lg gold-text leading-none uppercase">CP-GOLD</span>
+        <span class="hidden sm:inline text-[9px] font-mono text-zinc-500 bg-zinc-950 px-2.5 py-1 rounded-full border border-zinc-800 uppercase">Live Host</span>
+      </div>
+
+      <div class="flex items-center gap-4 text-xs font-semibold">
+        <a href="dashboard.html" class="text-zinc-400 hover:text-zinc-200">Dashboard</a>
+        <a href="wallet.html" class="text-zinc-400 hover:text-zinc-200">Wallet</a>
+        <a href="history.html" class="text-zinc-400 hover:text-zinc-200">History</a>
+        <a href="admin.html" id="admin-link" class="text-yellow-500 underline decoration-2">Admin</a>
+        <button id="logout-btn" class="p-2 rounded bg-zinc-900 border border-zinc-800 hover:border-yellow-500/20 text-zinc-400 hover:text-yellow-500 text-[10px] uppercase font-mono tracking-wider font-extrabold cursor-pointer">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-12">
+    
+    <!-- LEFT SIDE: FORCE SETTLE OVERRIDES -->
+    <div class="lg:col-span-4">
+      <div class="glass rounded-2xl p-6 border-red-500/10">
+        <h3 class="text-sm font-bold font-display uppercase tracking-wider text-red-500 mb-3 flex items-center gap-1.5">
+          <span>Force Settle Drawing</span>
+        </h3>
+        <p class="text-[11px] text-zinc-400 leading-normal mb-5">Force-draw previous period outcomes. Overrides execute instantaneous settlements.</p>
+
+        <div class="space-y-4">
+          <div class="space-y-1">
+            <label class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold">Override target Round ID</label>
+            <input type="text" id="target-round-id" placeholder="e.g. R2548" class="w-full px-4 py-3 bg-zinc-950 border border-zinc-900 focus:border-red-500/30 rounded-xl text-zinc-200 text-sm outline-none font-mono">
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold">Force color result</label>
+            <select id="target-result-color" class="w-full px-4 py-3 bg-zinc-950 border border-zinc-900 rounded-xl text-zinc-200 text-sm outline-none">
+              <option value="red">Red</option>
+              <option value="green">Green</option>
+              <option value="violet">Violet</option>
+            </select>
+          </div>
+
+          <button id="force-settle-btn" class="w-full py-4 rounded-xl font-bold bg-gradient-to-r from-red-800 to-rose-600 text-zinc-100 cursor-pointer text-xs uppercase tracking-wider font-display">Enforce 결과</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE: ACCOUNT DATABASE ROW ENTRIES -->
+    <div class="lg:col-span-8">
+      <div class="glass rounded-2xl p-6 min-h-[350px]">
+        <h3 class="text-sm font-bold font-display uppercase tracking-wider text-zinc-300 mb-6">Predictor Profiles lists</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-zinc-900 text-[10px] font-mono uppercase tracking-wider text-zinc-500 pb-3">
+                <th class="pb-3 pl-2">Display name</th>
+                <th class="pb-3 text-right">Coins balance</th>
+                <th class="pb-3 text-center">Status</th>
+                <th class="pb-3 text-right pr-2">Quick Action adjustments</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-ledger" class="divide-y divide-zinc-900/50 text-xs">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module">
+    import { checkAuthState, logout } from "./js/auth.js";
+    import { settleRound } from "./js/game.js";
+    import { getAllUsers, adjustUserBalance, toggleUserBan } from "./js/admin.js";
+
+    // Protect administrative views
+    checkAuthState(
+      async (profile) => {
+        if (!profile.isAdmin) {
+          alert("Permission denied. Restricting access to administrative hubs.");
+          window.location.href = "dashboard.html";
+          return;
+        }
+
+        // Render master files table logs
+        const users = await getAllUsers();
+        const ledger = document.getElementById("admin-users-ledger");
+        ledger.innerHTML = "";
+        users.forEach(u => {
+          const row = document.createElement("tr");
+          row.className = "hover:bg-zinc-950/20";
+          row.innerHTML = `
+            <td class="py-4 pl-2 font-display">
+              <div class="flex flex-col">
+                <span class="font-bold">${u.username}</span>
+                <span class="text-[9px] text-zinc-400 font-mono mt-0.5">${u.email}</span>
+                <span class="text-[8px] text-zinc-550 font-mono mt-0.5">${u.uid}</span>
+              </div>
+            </td>
+            <td class="py-4 text-right font-mono font-bold">${u.balance.toLocaleString()}</td>
+            <td class="py-4 text-center">
+              <span class="px-2 py-0.5 rounded-full border text-[9px] uppercase tracking-wide font-extrabold font-mono ${
+                u.isBanned ? 'bg-rose-950/20 border-rose-500/20 text-rose-450' : 'bg-emerald-950/20 border-emerald-500/20 text-emerald-400'
+              }">${u.isBanned ? 'Banned' : 'Active'}</span>
+            </td>
+            <td class="py-4 text-right pr-2">
+              <button class="adjust-pts-btn px-2.5 py-1 text-[9px] uppercase font-bold bg-zinc-900 border border-zinc-800 rounded-lg hover:border-yellow-500/20 cursor-pointer hover:bg-zinc-850" data-uid="${u.uid}">Edit Coins</button>
+              <button class="ban-toggle-btn px-2.5 py-1 text-[9px] uppercase font-bold border border-zinc-800 rounded-lg cursor-pointer ${u.isBanned ? 'bg-emerald-950/20 hover:border-emerald-500/20 text-emerald-400' : 'bg-rose-950/20 hover:border-rose-500/20 text-rose-400'}" data-uid="${u.uid}" data-banned="${u.isBanned}">${u.isBanned ? 'Activate' : 'Suspend'}</button>
+            </td>
+          `;
+          ledger.appendChild(row);
+        });
+
+        // Setup edits coin actions clicks
+        document.querySelectorAll(".adjust-pts-btn").forEach(btn => {
+          btn.addEventListener("click", async () => {
+             const uid = btn.getAttribute("data-uid");
+             const adjustment = prompt("Enter adjustment value (positive to add, negative to subtract):");
+             const val = parseInt(adjustment);
+             if (isNaN(val)) return;
+             try {
+               await adjustUserBalance(uid, val);
+               alert("Balance adjusted!");
+               location.reload();
+             } catch (err) {
+               alert(err.message || "Failed modifying balance.");
+             }
+          });
+        });
+
+        document.querySelectorAll(".ban-toggle-btn").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const uid = btn.getAttribute("data-uid");
+            const banState = btn.getAttribute("data-banned") === "true";
+            try {
+              await toggleUserBan(uid, !banState);
+              alert("Status altered successfully!");
+              location.reload();
+            } catch (err) {
+              alert(err.message || "Failed altering suspension status.");
+            }
+          });
+        });
+
+      },
+      () => {
+        window.location.href = "login.html";
+      }
+    );
+
+    // Force Draws Outcome Submit
+    const drawBtn = document.getElementById("force-settle-btn");
+    drawBtn.addEventListener("click", async () => {
+      const targetId = document.getElementById("target-round-id").value.trim();
+      const targetColor = document.getElementById("target-result-color").value;
+
+      if (!targetId) {
+        alert("Enter appropriate target round IDs.");
+        return;
+      }
+      try {
+        await settleRound(targetId, targetColor);
+        alert("Succeeded! Settle executed on round ID: " + targetId);
+      } catch (err) {
+        alert(err.message || "Execution exception occurred.");
+      }
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await logout();
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html>

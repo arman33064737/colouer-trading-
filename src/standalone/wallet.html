@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CP-Prediction Wallet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@550;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #09090b;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
+      font-family: 'Outfit', sans-serif;
+    }
+    .glass {
+      background: rgba(15, 15, 22, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(212, 175, 55, 0.12);
+    }
+    .gold-text {
+      background: linear-gradient(135deg, #f6e0a4 0%, #d4af37 50%, #aa7c11 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-zinc-100 pb-12">
+
+  <!-- NAVIGATION HEADER -->
+  <header class="sticky top-0 z-40 w-full glass border-b border-yellow-500/10 px-4 md:px-8 py-3.5 mb-8">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="font-display font-black text-lg gold-text leading-none uppercase">CP-GOLD</span>
+        <span class="hidden sm:inline text-[9px] font-mono text-zinc-500 bg-zinc-950 px-2.5 py-1 rounded-full border border-zinc-800 uppercase">Live Host</span>
+      </div>
+
+      <div class="flex items-center gap-4 text-xs font-semibold">
+        <a href="dashboard.html" class="text-zinc-400 hover:text-zinc-200">Dashboard</a>
+        <a href="wallet.html" class="text-yellow-500 underline decoration-2">Wallet</a>
+        <a href="history.html" class="text-zinc-400 hover:text-zinc-200">History</a>
+        <a href="admin.html" id="admin-link" class="hidden text-zinc-400 hover:text-rose-400 font-bold">Admin</a>
+        <button id="logout-btn" class="p-2 rounded bg-zinc-900 border border-zinc-800 hover:border-yellow-500/20 text-zinc-400 hover:text-yellow-500 text-[10px] uppercase font-mono tracking-wider font-extrabold cursor-pointer">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- LEFT COLUMN: COIN METRIC ADJUSTMENTS -->
+    <div class="lg:col-span-6 flex flex-col gap-6">
+      <div class="glass rounded-2xl p-6 flex flex-col justify-between min-h-[140px] relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-36 h-36 bg-yellow-500/10 rounded-full blur-2xl"></div>
+        <div>
+          <span class="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">Safe Coin balance</span>
+          <h2 class="text-4xl font-extrabold text-zinc-100 mt-2 font-mono gold-text" id="coins-balance-display">0 Coins</h2>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-6 space-y-4">
+        <h3 class="text-sm font-bold font-display uppercase tracking-wider text-zinc-200">Adjust Virtual Coins</h3>
+        
+        <div class="grid grid-cols-2 gap-2 p-1 bg-zinc-950 rounded-xl border border-zinc-900">
+          <button id="mode-deposit" class="py-2.5 rounded text-xs font-bold bg-yellow-500/15 border border-yellow-500/30 text-yellow-500 cursor-pointer">Simulated Deposit</button>
+          <button id="mode-withdraw" class="py-2.5 rounded text-xs font-bold text-zinc-400 cursor-pointer hover:text-zinc-200">Simulated Withdraw</button>
+        </div>
+
+        <div class="space-y-4 pt-2">
+          <div class="space-y-1">
+            <label class="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold">Amount size</label>
+            <input type="number" id="wallet-amount" value="1000" class="w-full px-4 py-3 bg-zinc-950 border border-zinc-900 focus:border-yellow-500/40 rounded-xl text-zinc-200 text-sm outline-none transition-colors font-mono">
+          </div>
+
+          <button id="adjust-wallet-btn" class="w-full py-4 rounded-xl font-bold bg-gradient-to-r from-yellow-600 to-yellow-400 text-zinc-950 cursor-pointer text-xs uppercase tracking-wider font-display">Authorize Coins adjustments</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: HISTORICAL RECORD TABLE -->
+    <div class="lg:col-span-6 flex flex-col gap-6">
+      <div class="glass rounded-2xl p-6 flex-grow min-h-[300px]">
+        <h3 class="text-sm font-bold font-display uppercase tracking-wider text-zinc-300 mb-4">Transaction Audits log</h3>
+        <div id="tx-log-container" class="space-y-2 max-h-[350px] overflow-y-auto">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module">
+    import { checkAuthState, logout } from "./js/auth.js";
+    import { adjustWallet, subscribeTransactions } from "./js/wallet.js";
+
+    let activeUser = null;
+    let walletMode = "deposit";
+
+    const coinsDisplay = document.getElementById("coins-balance-display");
+    const adminLink = document.getElementById("admin-link");
+
+    checkAuthState(
+      (profile) => {
+        activeUser = profile;
+        coinsDisplay.textContent = profile.balance.toLocaleString() + " Coins";
+        if (profile.isAdmin) adminLink.classList.remove("hidden");
+        
+        // Listen transaction history log
+        subscribeTransactions(profile.uid, (data) => {
+          const container = document.getElementById("tx-log-container");
+          container.innerHTML = "";
+          if (data.length === 0) {
+            container.innerHTML = `<div class="p-8 text-center text-xs text-zinc-550 font-mono">No prior transactions on record.</div>`;
+            return;
+          }
+          data.forEach(tx => {
+            const row = document.createElement("div");
+            row.className = "flex justify-between items-center bg-zinc-950/40 border border-zinc-900 p-3 rounded-xl";
+            row.innerHTML = `
+              <div>
+                <span class="text-xs font-bold capitalize">${tx.type}</span>
+                <span class="text-[9px] block text-zinc-550 font-mono mt-1">${new Date(tx.timestamp).toLocaleString()}</span>
+              </div>
+              <span class="font-mono text-sm font-bold ${tx.amount > 0 ? 'text-emerald-400' : 'text-zinc-400'}">${tx.amount > 0 ? '+' : ''}${tx.amount.toLocaleString()}</span>
+            `;
+            container.appendChild(row);
+          });
+        });
+      },
+      () => {
+        window.location.href = "login.html";
+      }
+    );
+
+    // Toggle Modes
+    const modeDep = document.getElementById("mode-deposit");
+    const modeWith = document.getElementById("mode-withdraw");
+
+    modeDep.addEventListener("click", () => {
+      walletMode = "deposit";
+      modeDep.className = "py-2.5 rounded text-xs font-bold bg-yellow-500/15 border border-yellow-500/30 text-yellow-500 cursor-pointer";
+      modeWith.className = "py-2.5 rounded text-xs font-bold text-zinc-400 cursor-pointer";
+    });
+
+    modeWith.addEventListener("click", () => {
+      walletMode = "withdraw";
+      modeWith.className = "py-2.5 rounded text-xs font-bold bg-yellow-500/15 border border-yellow-500/30 text-yellow-500 cursor-pointer";
+      modeDep.className = "py-2.5 rounded text-xs font-bold text-zinc-400 cursor-pointer";
+    });
+
+    // Submits
+    const triggerBtn = document.getElementById("adjust-wallet-btn");
+    triggerBtn.addEventListener("click", async () => {
+      const amt = parseInt(document.getElementById("wallet-amount").value);
+      if (isNaN(amt) || amt <= 0) {
+        alert("Please enter a valid coin adjustments size.");
+        return;
+      }
+      try {
+        await adjustWallet(activeUser.uid, walletMode, amt);
+        alert("Transaction finalized successfully!");
+        location.reload();
+      } catch (err) {
+        alert(err.message || "Failed finalizing ledger changes.");
+      }
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await logout();
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html>

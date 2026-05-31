@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prediction Arena - Entrance</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@550;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #09090b;
+      background-image: radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.08) 0%, transparent 60%);
+      font-family: 'Outfit', sans-serif;
+    }
+    .glass {
+      background: rgba(15, 15, 22, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center text-zinc-100 p-4">
+
+  <div class="max-w-md w-full glass rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden border border-gold/10">
+    <div class="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-200"></div>
+    
+    <!-- Animated Logo -->
+    <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-yellow-600 to-yellow-200 p-[1.5px] mx-auto shadow-lg shadow-yellow-500/10">
+      <div class="w-full h-full rounded-full bg-zinc-950 flex items-center justify-center">
+        <span class="font-display font-extrabold text-lg text-yellow-500">CP</span>
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <h1 class="text-3xl font-extrabold tracking-tight uppercase" style="font-family: 'Space Grotesk', sans-serif;">
+        Prediction <span class="bg-gradient-to-r from-yellow-100 via-yellow-400 to-yellow-600 bg-clip-text text-transparent">GOLD</span>
+      </h1>
+      <p class="text-xs text-zinc-500 tracking-wider uppercase font-mono font-bold">Initializing Game Engine...</p>
+    </div>
+
+    <!-- Spinner Loading -->
+    <div class="py-4">
+      <div class="w-10 h-10 border-2 border-dashed border-yellow-500 rounded-full animate-spin mx-auto"></div>
+    </div>
+
+    <p class="text-[11px] text-zinc-400 leading-normal bg-zinc-950/40 p-3 rounded-xl border border-zinc-900 font-mono">
+      Validating active secure login cookies... Redirecting to appropriate game sectors.
+    </p>
+
+    <!-- Fallback buttons if cookies disabled -->
+    <div class="grid grid-cols-2 gap-3 pt-2 text-xs">
+      <a href="login.html" class="py-2.5 rounded-xl border border-zinc-850 hover:bg-zinc-900 transition-colors font-medium">Sign In</a>
+      <a href="register.html" class="py-2.5 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-400 text-neutral-950 font-bold hover:brightness-110 transition-all">Sign Up</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { checkAuthState } from "./js/auth.js";
+
+    // Auto routing based on active authentication
+    setTimeout(() => {
+      checkAuthState(
+        (profile) => {
+          window.location.href = "dashboard.html";
+        },
+        () => {
+          window.location.href = "login.html";
+        }
+      );
+    }, 1500); // Allow brief visual intro
+  </script>
+</body>
+</html>
