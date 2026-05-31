@@ -1,0 +1,6 @@
+{
+  "name": "Color Prediction Game",
+  "description": "A premium gold-accented, glassmorphic Color Prediction system with real-time countdown, virtual coin betting, transaction wallets, results engine, and admin panels.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net default catch-all: Deny all reads/writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- PRIMITIVE GLOBAL HELPERS (PHASE 3) ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        getUserData(request.auth.uid).isAdmin == true || 
+        request.auth.token.email.toLowerCase() == 'admin@game.com'
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- CODES AND COLLECTION BOUNDARIES ---
+    
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      
+      // Validation Blueprint for creating profiles
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        incoming().uid == userId &&
+        incoming().username is string && incoming().username.size() >= 3 && incoming().username.size() <= 32 &&
+        incoming().email == request.auth.token.email &&
+        incoming().balance == 10000 &&
+        incoming().isBanned == false &&
+        incoming().isAdmin == (request.auth.token.email.toLowerCase() == 'admin@game.com') && // Bootstrapped admin check
+        incoming().createdAt is int
+      );
+
+      // Status adjustment and coin balance adjustments
+      allow update: if isSignedIn() && (
+        // Case 1: Signed-in user changing details (e.g., username only)
+        (request.auth.uid == userId && 
+         incoming().uid == userId &&
+         incoming().balance == existing().balance &&
+         incoming().isBanned == existing().isBanned &&
+         incoming().isAdmin == existing().isAdmin &&
+         incoming().email == existing().email &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['username'])) 
+        ||
+        // Case 2: Admin balance modification, ban adjustment
+        (isAdmin() && 
+         incoming().uid == existing().uid &&
+         incoming().email == existing().email &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().diff(existing()).affectedKeys().hasAny(['balance', 'isBanned', 'isAdmin', 'username']))
+      );
+    }
+
+    // 2. Game Rounds Collection
+    match /rounds/{roundId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin(); // Settle mechanism remains server/admin-controlled
+    }
+
+    // 3. Bets Collection
+    match /bets/{betId} {
+      allow read: if isSignedIn(); // Social bets are public in prediction games
+      
+      // Bet placing validation (strict keys and ownership checks)
+      allow create: if isSignedIn() && (
+        isValidId(betId) &&
+        incoming().id == betId &&
+        incoming().userId == request.auth.uid &&
+        incoming().amount is int && incoming().amount > 0 && incoming().amount <= 100000 &&
+        incoming().color in ['red', 'green', 'violet'] &&
+        incoming().resultStatus == 'pending' &&
+        incoming().winAmount == null &&
+        incoming().timestamp is int &&
+        getUserData(request.auth.uid).isBanned == false // Banned accounts cannot bet
+      );
+
+      // Payout settling updates
+      allow update: if isAdmin() && (
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().amount == existing().amount &&
+        incoming().color == existing().color &&
+        incoming().timestamp == existing().timestamp &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['winAmount', 'resultStatus'])
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // 4. Wallet Transactions Collection
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() && (
+        isValidId(transactionId) &&
+        incoming().id == transactionId &&
+        incoming().userId == request.auth.uid &&
+        incoming().type in ['deposit', 'withdraw', 'bet', 'win'] &&
+        incoming().amount is int &&
+        incoming().status == 'completed' &&
+        incoming().timestamp is int &&
+        getUserData(request.auth.uid).isBanned == false
+      );
+
+      allow update, delete: if isAdmin();
+    }
+
+    // 5. Game history collection
+    match /game_history/{betId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile containing balances, status, and role privileges.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique user credentials identifier."
+        },
+        "username": {
+          "type": "string",
+          "description": "User display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "balance": {
+          "type": "integer",
+          "description": "Active coins balance ledger."
+        },
+        "isBanned": {
+          "type": "boolean",
+          "description": "Flag indicating if user has been suspended."
+        },
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Flag indicating administrative role."
+        },
+        "createdAt": {
+          "type": "integer"
+        }
+      },
+      "required": ["uid", "username", "email", "balance", "isBanned", "isAdmin", "createdAt"]
+    },
+    "GameRound": {
+      "title": "GameRound",
+      "description": "Game period with prediction countdown, draw outcomes, and wager aggregates.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "integer"
+        },
+        "endTime": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "completed"]
+        },
+        "resultColor": {
+          "type": "string",
+          "enum": ["red", "green", "violet", "red-violet", "green-violet"]
+        },
+        "resultNumber": {
+          "type": "integer"
+        },
+        "totalBetsRed": {
+          "type": "integer"
+        },
+        "totalBetsGreen": {
+          "type": "integer"
+        },
+        "totalBetsViolet": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "integer"
+        }
+      },
+      "required": ["id", "startTime", "endTime", "status", "createdAt"]
+    },
+    "UserBet": {
+      "title": "UserBet",
+      "description": "Single prediction bet placed by a player in a game period.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "roundId": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string",
+          "enum": ["red", "green", "violet"]
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "winAmount": {
+          "type": "integer"
+        },
+        "resultStatus": {
+          "type": "string",
+          "enum": ["pending", "won", "lost"]
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      },
+      "required": ["id", "userId", "username", "roundId", "color", "amount", "resultStatus", "timestamp"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Coin transaction audit log representing credits and debits.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["deposit", "withdraw", "bet", "win"]
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["completed", "pending"]
+        },
+        "timestamp": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "userId", "type", "amount", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile collection."
+    },
+    "rounds/{roundId}": {
+      "schema": { "$ref": "#/entities/GameRound" },
+      "description": "Game rounds with draw results."
+    },
+    "bets/{betId}": {
+      "schema": { "$ref": "#/entities/UserBet" },
+      "description": "Placed predictions in real-time."
+    },
+    "transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Transactions history accounts ledger."
+    },
+    "game_history/{betId}": {
+      "schema": { "$ref": "#/entities/UserBet" },
+      "description": "Replicated history bets registry."
+    }
+  }
+}
